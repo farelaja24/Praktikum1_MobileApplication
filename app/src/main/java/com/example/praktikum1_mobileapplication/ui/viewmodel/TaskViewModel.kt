@@ -1,7 +1,9 @@
 package com.example.praktikum1_mobileapplication.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.praktikum1_mobileapplication.data.local.TaskDatabase
 import com.example.praktikum1_mobileapplication.data.model.Task
 import com.example.praktikum1_mobileapplication.data.model.TaskPriority
 import com.example.praktikum1_mobileapplication.data.model.TaskStatus
@@ -11,11 +13,16 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel untuk mengelola state dan business logic aplikasi Manajemen Tugas Mahasiswa.
- * Mengimplementasikan pemisahan lapisan (Separation of Concerns): UI -> ViewModel -> Repository.
+ * Berinteraksi dengan Room Database melalui TaskRepository.
  */
-class TaskViewModel(
-    private val repository: TaskRepository = TaskRepository()
-) : ViewModel() {
+class TaskViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository: TaskRepository
+
+    init {
+        val taskDao = TaskDatabase.getDatabase(application).taskDao()
+        repository = TaskRepository(taskDao)
+    }
 
     private val _tasks = MutableStateFlow<List<Task>>(emptyList())
     val tasks: StateFlow<List<Task>> = _tasks.asStateFlow()
@@ -61,39 +68,43 @@ class TaskViewModel(
     }
 
     fun addTask(mataKuliah: String, judul: String, deskripsi: String, deadline: String, prioritas: TaskPriority, status: TaskStatus) {
-        val newTask = Task(
-            mataKuliah = mataKuliah,
-            judul = judul,
-            deskripsi = deskripsi,
-            deadline = deadline,
-            prioritas = prioritas,
-            status = status
-        )
-        repository.insertTask(newTask)
-        loadTasks()
+        viewModelScope.launch {
+            val newTask = Task(
+                mataKuliah = mataKuliah,
+                judul = judul,
+                deskripsi = deskripsi,
+                deadline = deadline,
+                prioritas = prioritas,
+                status = status
+            )
+            repository.insertTask(newTask)
+        }
     }
 
     fun updateTask(task: Task, mataKuliah: String, judul: String, deskripsi: String, deadline: String, prioritas: TaskPriority, status: TaskStatus) {
-        val updated = task.copy(
-            mataKuliah = mataKuliah,
-            judul = judul,
-            deskripsi = deskripsi,
-            deadline = deadline,
-            prioritas = prioritas,
-            status = status
-        )
-        repository.updateTask(updated)
-        loadTasks()
+        viewModelScope.launch {
+            val updated = task.copy(
+                mataKuliah = mataKuliah,
+                judul = judul,
+                deskripsi = deskripsi,
+                deadline = deadline,
+                prioritas = prioritas,
+                status = status
+            )
+            repository.updateTask(updated)
+        }
     }
 
     fun updateTaskStatus(task: Task, newStatus: TaskStatus) {
-        val updated = task.copy(status = newStatus)
-        repository.updateTask(updated)
-        loadTasks()
+        viewModelScope.launch {
+            val updated = task.copy(status = newStatus)
+            repository.updateTask(updated)
+        }
     }
 
     fun deleteTask(taskId: Long) {
-        repository.deleteTask(taskId)
-        loadTasks()
+        viewModelScope.launch {
+            repository.deleteTask(taskId)
+        }
     }
 }
