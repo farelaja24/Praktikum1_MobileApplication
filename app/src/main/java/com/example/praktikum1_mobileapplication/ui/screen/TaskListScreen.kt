@@ -15,33 +15,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.praktikum1_mobileapplication.data.model.Task
 import com.example.praktikum1_mobileapplication.data.model.TaskStatus
 import com.example.praktikum1_mobileapplication.ui.components.TaskItemCard
+import com.example.praktikum1_mobileapplication.ui.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskListScreen(
-    tasks: List<Task>,
+    viewModel: TaskViewModel = viewModel(),
     onTaskClick: (Task) -> Unit,
     onAddTaskClick: () -> Unit,
-    onStatusChange: (Task, TaskStatus) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf<TaskStatus?>(null) }
+    val filteredTasks by viewModel.filteredTasks.collectAsStateWithLifecycle()
+    val allTasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val selectedFilter by viewModel.selectedFilter.collectAsStateWithLifecycle()
 
-    val filteredTasks = tasks.filter { task ->
-        val matchesSearch = task.judul.contains(searchQuery, ignoreCase = true) ||
-                task.mataKuliah.contains(searchQuery, ignoreCase = true)
-        val matchesFilter = selectedFilter == null || task.status == selectedFilter
-        matchesSearch && matchesFilter
-    }
-
-    val totalCount = tasks.size
-    val belumCount = tasks.count { it.status == TaskStatus.BELUM }
-    val prosesCount = tasks.count { it.status == TaskStatus.PROSES }
-    val selesaiCount = tasks.count { it.status == TaskStatus.SELESAI }
+    val totalCount = allTasks.size
+    val belumCount = allTasks.count { it.status == TaskStatus.BELUM }
+    val prosesCount = allTasks.count { it.status == TaskStatus.PROSES }
+    val selesaiCount = allTasks.count { it.status == TaskStatus.SELESAI }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -107,7 +104,7 @@ fun TaskListScreen(
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
+                onValueChange = { viewModel.setSearchQuery(it) },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Cari tugas atau mata kuliah...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
@@ -124,22 +121,22 @@ fun TaskListScreen(
             ) {
                 FilterChip(
                     selected = selectedFilter == null,
-                    onClick = { selectedFilter = null },
+                    onClick = { viewModel.setFilter(null) },
                     label = { Text("Semua") }
                 )
                 FilterChip(
                     selected = selectedFilter == TaskStatus.BELUM,
-                    onClick = { selectedFilter = TaskStatus.BELUM },
+                    onClick = { viewModel.setFilter(TaskStatus.BELUM) },
                     label = { Text("Belum") }
                 )
                 FilterChip(
                     selected = selectedFilter == TaskStatus.PROSES,
-                    onClick = { selectedFilter = TaskStatus.PROSES },
+                    onClick = { viewModel.setFilter(TaskStatus.PROSES) },
                     label = { Text("Proses") }
                 )
                 FilterChip(
                     selected = selectedFilter == TaskStatus.SELESAI,
-                    onClick = { selectedFilter = TaskStatus.SELESAI },
+                    onClick = { viewModel.setFilter(TaskStatus.SELESAI) },
                     label = { Text("Selesai") }
                 )
             }
@@ -171,7 +168,7 @@ fun TaskListScreen(
                         TaskItemCard(
                             task = task,
                             onClick = { onTaskClick(task) },
-                            onStatusChange = { newStatus -> onStatusChange(task, newStatus) }
+                            onStatusChange = { newStatus -> viewModel.updateTaskStatus(task, newStatus) }
                         )
                     }
                     item {
